@@ -1,0 +1,82 @@
+# -*- coding: utf-8 -*-
+
+from numpy import *
+import matplotlib.pyplot as plt
+
+INF = 9999999.0
+
+#从文件读入数据集
+def loadDataSet(fileName, splitChar='\t'):
+    dataSet = []
+    with open(fileName) as f:
+        for line in f.readlines():
+            curline = line.strip().split(splitChar)
+            fltline = list(map(float, curline))
+            dataSet.append(fltline)
+    return dataSet
+
+#计算两个向量的欧式距离
+def distEclud(vecA, vecB):
+    return sqrt(sum(power(vecA - vecB, 2)))
+
+#随机选取k个质心
+def randCent(dataSet, k):
+    n = shape(dataSet)[1]#得到数据样本维度
+    centroids = mat(zeros((k, n)))#初始化一个矩阵
+    for j in range(n):
+        minJ = min(dataSet[:, j])#得到该列数据的最小值
+        rangeJ = float(max(dataSet[:, j]) - minJ)#得到该数据的最大值-最小值
+        centroids[:, j] = minJ + rangeJ * random.rand(k, 1)#随机选取质心
+    return centroids
+
+#算法核心实现
+def kMeans(dataSet, k, distMeans=distEclud, createCent=randCent):
+    m = shape(dataSet)[0]#获取数据样本数
+    clusterAssment = mat(zeros((m, 2)))#初始化矩阵
+    centroids = createCent(dataSet, k)#质心向量
+    clusterChanged = True#聚类结果是否发生变化的布尔类型
+    while clusterChanged:#一直执行聚类算法，直至所有数据点聚类结果不再发生变化
+        clusterChanged = False
+        for i in range(m): # 寻找最近的质心
+            minDist = INF
+            minIndex = -1
+            for j in range(k):
+                distJI = distMeans(centroids[j, :], dataSet[i, :])
+                if distJI < minDist:
+                    minDist = distJI
+                    minIndex = j
+            if clusterAssment[i, 0] != minIndex:
+                clusterChanged = True
+            clusterAssment[i, :] = minIndex, minDist**2
+        for cent in range(k): # 更新质心的位置
+            ptsInClust = dataSet[nonzero(clusterAssment[:, 0].A == cent)[0]]
+            centroids[cent, :] = mean(ptsInClust, axis=0)
+    return centroids, clusterAssment#返回聚类结果及平方误差
+
+#作图
+def plot(dataSet, centroids, clusterAssment):
+    m = shape(centroids)[0]
+    fig = plt.figure()
+    scatterMarkers = ['s', 'o', '^', '8', 'p', 'd', 'v', 'h', '>', '<']
+    scatterColors = ['blue', 'green', 'yellow', 'purple', 'grey', 'red', 'brown', 'orange']
+    ax = fig.add_subplot(111)
+    for i in range(m):
+        ptsInCurCluster = dataSet[nonzero(clusterAssment[:, 0].A == i)[0], :]
+        markerStyle = scatterMarkers[i % len(scatterMarkers)]
+        colorSytle = scatterColors[i % len(scatterColors)]
+        ax.scatter(ptsInCurCluster[:, 0].flatten().A[0], ptsInCurCluster[:, 1].flatten().A[0], marker=markerStyle, c=colorSytle, s=90)
+    ax.scatter(centroids[:, 0].flatten().A[0], centroids[:, 1].flatten().A[0], marker='*', c='black', s=300)
+
+def main():
+    dataSet = loadDataSet('dataset5.txt', splitChar=',')
+    dataSet = mat(dataSet)
+    k = int(input('请输入需将数据分为几类（k值）：'))
+    resultCentroids, clustAssing = kMeans(dataSet, k)
+    print('\n聚类后的k个质心为：')
+    print(resultCentroids)
+    print('\n聚类效果如图所示：')
+    plot(dataSet, resultCentroids, clustAssing)
+
+if __name__ == '__main__':
+    main()
+    plt.show()
